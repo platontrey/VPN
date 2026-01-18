@@ -1,0 +1,149 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="BackgroundBrush" Color="#1C1C1C"/>
+    <SolidColorBrush x:Key="SidebarBrush" Color="#2D2D30"/>
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="White"/>
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#AAAAAA"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#2ECC71"/>
+    <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#2ECC71"/>
+    <SolidColorBrush x:Key="ButtonForegroundBrush" Color="#1C1C1C"/>
+    <SolidColorBrush x:Key="TextBoxBackgroundBrush" Color="#2D2D30"/>
+    <SolidColorBrush x:Key="TextBoxBorderBrush" Color="#3E3E42"/>
+    <SolidColorBrush x:Key="TextBoxForegroundBrush" Color="White"/>
+    <SolidColorBrush x:Key="LogBackgroundBrush" Color="#000000"/>
+    <SolidColorBrush x:Key="LogTextBrush" Color="#00FF00"/>
+    <SolidColorBrush x:Key="BorderBrush" Color="#3E3E42"/>
+
+    <!-- Styles for dark theme -->
+    <Style TargetType="CheckBox">
+        <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style TargetType="ToggleButton">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Border" Background="{StaticResource BorderBrush}" CornerRadius="10" Width="40" Height="20">
+                        <Border x:Name="Thumb" Background="{StaticResource PrimaryTextBrush}" CornerRadius="10" Width="18" Height="18" HorizontalAlignment="Left" Margin="1">
+                            <Border.RenderTransform>
+                                <TranslateTransform X="0" />
+                            </Border.RenderTransform>
+                        </Border>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="Thumb" Property="RenderTransform">
+                                <Setter.Value>
+                                    <TranslateTransform X="20" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="Slider">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid x:Name="Root" Background="Transparent">
+                        <Border x:Name="TrackBackground"
+                                Background="{StaticResource BorderBrush}"
+                                Height="20"
+                                CornerRadius="10"
+                                VerticalAlignment="Center"/>
+                        <Track x:Name="PART_Track">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="{x:Static Slider.DecreaseLarge}">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <Border Background="{StaticResource AccentBrush}" Height="20" CornerRadius="10,0,0,10"/>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb x:Name="Thumb" Width="20" Height="20">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Ellipse x:Name="ThumbEllipse" Fill="{StaticResource PrimaryTextBrush}" Width="18" Height="18" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Ellipse.Effect>
+                                                    <DropShadowEffect x:Name="ThumbShadow" BlurRadius="4" ShadowDepth="0" Opacity="0.3"/>
+                                                </Ellipse.Effect>
+                                                <Ellipse.RenderTransform>
+                                                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                                </Ellipse.RenderTransform>
+                                            </Ellipse>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                    <Thumb.Triggers>
+                                        <EventTrigger RoutedEvent="Thumb.MouseEnter">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="ThumbEllipse"
+                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                     To="1.1" Duration="0:0:0.1"/>
+                                                    <DoubleAnimation Storyboard.TargetName="ThumbEllipse"
+                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                     To="1.1" Duration="0:0:0.1"/>
+                                                    <DoubleAnimation Storyboard.TargetName="ThumbShadow"
+                                                                     Storyboard.TargetProperty="Opacity"
+                                                                     To="0.5" Duration="0:0:0.1"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                        <EventTrigger RoutedEvent="Thumb.MouseLeave">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="ThumbEllipse"
+                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                     To="1" Duration="0:0:0.1"/>
+                                                    <DoubleAnimation Storyboard.TargetName="ThumbEllipse"
+                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                     To="1" Duration="0:0:0.1"/>
+                                                    <DoubleAnimation Storyboard.TargetName="ThumbShadow"
+                                                                     Storyboard.TargetProperty="Opacity"
+                                                                     To="0.3" Duration="0:0:0.1"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </Thumb.Triggers>
+                                </Thumb>
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="{x:Static Slider.IncreaseLarge}">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <Border Background="Transparent"/>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="TrackBackground" Property="Opacity" Value="0.8"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background" Value="{StaticResource SidebarBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    </Style>
+
+    <Style TargetType="ScrollViewer">
+        <Setter Property="Background" Value="{StaticResource LogBackgroundBrush}"/>
+    </Style>
+</ResourceDictionary>

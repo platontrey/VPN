@@ -1,0 +1,61 @@
+{
+  "server": "5.39.253.148:1935",
+  "auth": "admin:7LW1vWWOCGo00p1DrdDSHoIZNxqyLX7F",
+  "tls": {
+    "sni": "github.com",
+    "insecure": true,
+    "pinSHA256": "EF:FD:02:80:6D:1A:B4:76:A3:AF:7A:0E:A1:28:1E:CD:F5:06:AA:F3:D1:A1:C5:52:4F:BD:72:BB:76:9F:DF:9B"
+  },
+  "obfs": {
+    "type": "salamander",
+    "salamander": {
+      "password": "2ZpDrLZ4VkJQ9pdoMOJsjQzzAuFW3Qn"
+    }
+  },
+  "bandwidth": {
+    "up": "50 mbps",
+    "down": "100 mbps"
+  },
+  "dns": {
+    "server": "8.8.8.8",
+    "rules": [
+      {
+        "domain": [
+          "youtube.com",
+          "discord.com",
+          "roblox.com",
+          "2ip.ru",
+          "browserleaks.com"
+        ],
+        "server": "1.1.1.1"
+      }
+    ]
+  },
+  "route": {
+    "rules": [
+      {
+        "action": "bypass",
+        "domain": [
+          "youtube.com",
+          "discord.com",
+          "roblox.com",
+          "2ip.ru",
+          "browserleaks.com"
+        ]
+      }
+    ]
+  },
+  "tun": {
+    "name": "hysteria-tun0",
+    "mtu": 1500,
+    "auto": true,
+    "address": {
+      "ipv4": "10.0.0.1/24"
+    },
+    "route": {
+      "ipv4": [
+        "0.0.0.0/0"
+      ]
+    }
+  }
+}
