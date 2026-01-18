@@ -13,6 +13,7 @@ using System.Windows.Shapes;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using System.Linq;
+using HelixToolkit.Wpf;
 
 namespace HysteryVPN
 {
@@ -32,6 +33,16 @@ namespace HysteryVPN
         private bool _isDragging = false;
         private Point _lastMousePosition;
         private Ellipse? _userMarker;
+
+        // Для плавных движений 2D карты
+        private double velocityX = 0.0;
+        private double velocityY = 0.0;
+        private double targetTranslateX = 0.0;
+        private double targetTranslateY = 0.0;
+        private double targetScaleX = 1.0;
+        private double targetScaleY = 1.0;
+        private const double Damping2D = 0.95; // Инерция для 2D карты
+        private const double SmoothFactor2D = 0.5; // Плавность следования для 2D карты
         private System.Windows.Shapes.Path _mapPath = new();
         private GeoJsonFeatureCollection? _geoJsonData;
         private Size _lastMapSize = Size.Empty;
@@ -61,15 +72,17 @@ namespace HysteryVPN
                _logger.Log($"Set LinkInput.Text to: '{LinkInput.Text}'");
            }
 
-            // Загрузка состояния слайдера TURN
-            EnableTurnToggle.Value = _settingsManager.GetSetting<bool>("EnableTurn", false) ? 1 : 0;
+            // Загрузка состояния чекбокса TURN
+             EnableTurnToggle.IsChecked = _settingsManager.GetSetting<bool>("EnableTurn", false);
 
-            // Загрузка состояния слайдера Zapret
-            EnableZapretToggle.Value = _settingsManager.GetSetting<bool>("EnableZapret", false) ? 1 : 0;
+             // Загрузка состояния чекбокса Zapret
+             EnableZapretToggle.IsChecked = _settingsManager.GetSetting<bool>("EnableZapret", false);
 
-            LinkInput.TextChanged += LinkInput_TextChanged;
-            EnableTurnToggle.ValueChanged += EnableTurnToggle_ValueChanged;
-            EnableZapretToggle.ValueChanged += EnableZapretToggle_ValueChanged;
+             LinkInput.TextChanged += LinkInput_TextChanged;
+             EnableTurnToggle.Checked += EnableTurnToggle_Checked;
+             EnableTurnToggle.Unchecked += EnableTurnToggle_Unchecked;
+             EnableZapretToggle.Checked += EnableZapretToggle_Checked;
+             EnableZapretToggle.Unchecked += EnableZapretToggle_Unchecked;
 
             _logger.Log("Ready. Paste your hy2:// link and press CONNECT.");
             _logger.Log("Logs are copyable (Ctrl+C).");
@@ -82,35 +95,26 @@ namespace HysteryVPN
             _settingsManager.SetSetting("SavedLink", link);
         }
 
-        private void EnableTurnToggle_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void EnableTurnToggle_Checked(object sender, RoutedEventArgs e)
         {
-            _settingsManager.SetSetting("EnableTurn", EnableTurnToggle.Value == 1);
+            _settingsManager.SetSetting("EnableTurn", true);
         }
 
-        private void EnableZapretToggle_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void EnableTurnToggle_Unchecked(object sender, RoutedEventArgs e)
         {
-            _settingsManager.SetSetting("EnableZapret", EnableZapretToggle.Value == 1);
+            _settingsManager.SetSetting("EnableTurn", false);
         }
 
-        private void Slider_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        private void EnableZapretToggle_Checked(object sender, RoutedEventArgs e)
         {
-            if (sender is Slider slider)
-            {
-                // Для toggle switch: переключить между 0 и 1
-                double newValue = slider.Value == 0 ? 1 : 0;
-
-                // Анимировать Value для плавного перемещения
-                var animation = new System.Windows.Media.Animation.DoubleAnimation
-                {
-                    To = newValue,
-                    Duration = TimeSpan.FromSeconds(0.3),
-                    EasingFunction = new System.Windows.Media.Animation.QuadraticEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut }
-                };
-                slider.BeginAnimation(Slider.ValueProperty, animation);
-
-                e.Handled = true; // Предотвратить стандартное мгновенное изменение
-            }
+            _settingsManager.SetSetting("EnableZapret", true);
         }
+
+        private void EnableZapretToggle_Unchecked(object sender, RoutedEventArgs e)
+        {
+            _settingsManager.SetSetting("EnableZapret", false);
+        }
+
 
         private async void ActionBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -122,8 +126,8 @@ namespace HysteryVPN
             else
             {
                 string link = LinkInput.Text.Trim();
-                bool enableTurn = EnableTurnToggle.Value == 1;
-                bool enableZapret = EnableZapretToggle.Value == 1;
+                bool enableTurn = EnableTurnToggle.IsChecked ?? false;
+                bool enableZapret = EnableZapretToggle.IsChecked ?? false;
 
                 // Show progress and disable controls
                 ConnectionProgressPanel.Visibility = Visibility.Visible;
@@ -190,6 +194,7 @@ namespace HysteryVPN
         protected override void OnClosed(EventArgs e)
         {
             _vpnManager.StopVpn();
+            CompositionTarget.Rendering -= OnRendering2D;
             base.OnClosed(e);
         }
 
@@ -202,6 +207,22 @@ namespace HysteryVPN
             await LoadGeoJsonAsync();
             await UpdateUI();
             await GetUserLocationAsync();
+
+            // Инициализация целей для плавных движений
+            targetTranslateX = MapTranslateTransform.X;
+            targetTranslateY = MapTranslateTransform.Y;
+            targetScaleX = MapScaleTransform.ScaleX;
+            targetScaleY = MapScaleTransform.ScaleY;
+
+            // Центрирование камеры на местоположении пользователя с приближением (отложено)
+            if (_hasLocation)
+            {
+                Dispatcher.InvokeAsync(() => CenterOnUserLocation());
+            }
+
+            // Подписка на рендеринг для плавных движений 2D карты (по умолчанию 2D)
+            CompositionTarget.Rendering += OnRendering2D;
+
             _logger.Log("MainWindow loaded and user location fetched");
         }
 
@@ -327,11 +348,11 @@ namespace HysteryVPN
             {
                 _userMarker = new Ellipse
                 {
-                    Width = 15,
-                    Height = 15,
+                    Width = 4,
+                    Height = 4,
                     Fill = Brushes.Red,
                     Stroke = Brushes.White,
-                    StrokeThickness = 2,
+                    StrokeThickness = 1,
                     IsHitTestVisible = false
                 };
 
@@ -365,8 +386,21 @@ namespace HysteryVPN
                 MapCanvas.Children.Add(_userMarker);
             }
 
-            Canvas.SetLeft(_userMarker, p.X - 7.5);
-            Canvas.SetTop(_userMarker, p.Y - 7.5);
+            Canvas.SetLeft(_userMarker, p.X - 2);
+            Canvas.SetTop(_userMarker, p.Y - 2);
+        }
+
+        private void CenterOnUserLocation()
+        {
+            if (!_hasLocation || MapContainer.ActualWidth == 0 || MapContainer.ActualHeight == 0) return;
+
+            Point userPoint = LatLonToPoint(_currentLat, _currentLon);
+            double canvasWidth = MapContainer.ActualWidth;
+            double canvasHeight = MapContainer.ActualHeight;
+            targetTranslateX = -userPoint.X * 6.0 + canvasWidth / 2;
+            targetTranslateY = -userPoint.Y * 6.0 + canvasHeight / 2;
+            targetScaleX = 6.0;
+            targetScaleY = 6.0;
         }
 
         private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -392,20 +426,19 @@ namespace HysteryVPN
         private void MapRoot_MouseWheel(object sender, MouseWheelEventArgs e)
         {
             double zoom = e.Delta > 0 ? 1.1 : 0.9;
-            double newScale = MapScaleTransform.ScaleX * zoom;
+            double newScale = targetScaleX * zoom;
 
-            if (newScale < 0.5 || newScale > 5)
+            if (newScale < 0.5 || newScale > 20)
                 return;
 
             Point mouse = e.GetPosition(MapRoot);
 
-            MapTranslateTransform.X =
-                mouse.X - zoom * (mouse.X - MapTranslateTransform.X);
-            MapTranslateTransform.Y =
-                mouse.Y - zoom * (mouse.Y - MapTranslateTransform.Y);
+            // Скорректировать translate для зума вокруг курсора
+            targetTranslateX = mouse.X - zoom * (mouse.X - targetTranslateX);
+            targetTranslateY = mouse.Y - zoom * (mouse.Y - targetTranslateY);
 
-            MapScaleTransform.ScaleX = newScale;
-            MapScaleTransform.ScaleY = newScale;
+            targetScaleX = newScale;
+            targetScaleY = newScale;
         }
 
 
@@ -451,8 +484,13 @@ namespace HysteryVPN
                 double deltaX = currentPosition.X - _lastMousePosition.X;
                 double deltaY = currentPosition.Y - _lastMousePosition.Y;
 
-                MapTranslateTransform.X += deltaX;
-                MapTranslateTransform.Y += deltaY;
+                // Накопление скорости для инерции, с учетом масштаба
+                velocityX = deltaX * targetScaleX;
+                velocityY = deltaY * targetScaleY;
+
+                // Обновление цели
+                targetTranslateX += velocityX;
+                targetTranslateY += velocityY;
 
                 _lastMousePosition = currentPosition;
             }
@@ -465,6 +503,30 @@ namespace HysteryVPN
                 _isDragging = false;
                 MapRoot.ReleaseMouseCapture();
             }
+        }
+
+        private void OnRendering2D(object sender, EventArgs e)
+        {
+            // Если мышь отпущена, продолжаем двигаться по инерции
+            if (!_isDragging)
+            {
+                targetTranslateX += velocityX;
+                targetTranslateY += velocityY;
+
+                // Затухание скорости
+                velocityX *= Damping2D;
+                velocityY *= Damping2D;
+
+                // Остановить, если скорость слишком мала
+                if (Math.Abs(velocityX) < 0.01) velocityX = 0;
+                if (Math.Abs(velocityY) < 0.01) velocityY = 0;
+            }
+
+            // Плавная интерполяция к целевой позиции и масштабу
+            MapTranslateTransform.X += (targetTranslateX - MapTranslateTransform.X) * SmoothFactor2D;
+            MapTranslateTransform.Y += (targetTranslateY - MapTranslateTransform.Y) * SmoothFactor2D;
+            MapScaleTransform.ScaleX += (targetScaleX - MapScaleTransform.ScaleX) * SmoothFactor2D;
+            MapScaleTransform.ScaleY += (targetScaleY - MapScaleTransform.ScaleY) * SmoothFactor2D;
         }
 
         private async Task LoadGeoJsonAsync()
@@ -582,7 +644,7 @@ namespace HysteryVPN
             Point startPoint = new Point();
             Point lastPoint = new Point();
 
-            int step = 10; // Упрощение: брать каждую 10-ую точку для уменьшения количества линий
+            int step = Math.Max(1, ring.Count / 5000); // Адаптивный шаг для одинакового отображения на разных разрешениях
             for (int i = 0; i < ring.Count; i += step)
             {
                 var coord = ring[i];
@@ -599,7 +661,7 @@ namespace HysteryVPN
                 }
                 else
                 {
-                    pathSegments.Add(new LineSegment(point, true));
+                    pathSegments.Add(new System.Windows.Media.LineSegment(point, true));
                     lastPoint = point;
                 }
             }
@@ -613,13 +675,74 @@ namespace HysteryVPN
                 Point point = LatLonToPoint(lat, lon);
                 if (point != lastPoint)
                 {
-                    pathSegments.Add(new LineSegment(point, true));
+                    pathSegments.Add(new System.Windows.Media.LineSegment(point, true));
                 }
             }
 
             return new PathFigure(startPoint, pathSegments, true);
         }
 
+        private void MapTypeSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (MapRoot == null || GlobeContainer == null) return;
 
+            ComboBoxItem item = MapTypeSelector.SelectedItem as ComboBoxItem;
+            if (item != null)
+            {
+                if (item.Content.ToString() == "3D Globe")
+                {
+                    MapRoot.Visibility = Visibility.Collapsed;
+                    GlobeContainer.Visibility = Visibility.Visible;
+                    GlobeControls.Visibility = Visibility.Visible;
+
+                    // Отписка от рендеринга 2D карты
+                    CompositionTarget.Rendering -= OnRendering2D;
+                }
+                else
+                {
+                    MapRoot.Visibility = Visibility.Visible;
+                    GlobeContainer.Visibility = Visibility.Collapsed;
+                    GlobeControls.Visibility = Visibility.Collapsed;
+
+                    // Подписка на рендеринг для плавных движений 2D карты
+                    CompositionTarget.Rendering -= OnRendering2D;
+                    CompositionTarget.Rendering += OnRendering2D;
+                }
+            }
+        }
+
+        private void ToggleAtmosphere_Checked(object sender, RoutedEventArgs e)
+        {
+            if (GlobeContainer is MapboxStyleGlobe globe)
+            {
+                var checkbox = sender as CheckBox;
+                globe.SetAtmosphereVisible(checkbox?.IsChecked ?? true);
+            }
+        }
+
+        private void ToggleStars_Checked(object sender, RoutedEventArgs e)
+        {
+            if (GlobeContainer is MapboxStyleGlobe globe)
+            {
+                var checkbox = sender as CheckBox;
+                globe.SetStarsVisible(checkbox?.IsChecked ?? true);
+            }
+        }
+
+        private void RotationSpeed_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (GlobeContainer is MapboxStyleGlobe globe)
+            {
+                globe.SetRotationSpeed(e.NewValue);
+            }
+        }
+
+        private void ResetView_Click(object sender, RoutedEventArgs e)
+        {
+            if (GlobeContainer is MapboxStyleGlobe globe)
+            {
+                globe.ResetView();
+            }
+        }
     }
 }

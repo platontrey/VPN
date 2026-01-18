@@ -81,40 +81,40 @@
                                                     <ScaleTransform ScaleX="1" ScaleY="1"/>
                                                 </Ellipse.RenderTransform>
                                             </Ellipse>
+                                            <ControlTemplate.Triggers>
+                                                <EventTrigger RoutedEvent="Thumb.MouseEnter">
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="ThumbEllipse"
+                                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                             To="1.1" Duration="0:0:0.1"/>
+                                                            <DoubleAnimation Storyboard.TargetName="ThumbEllipse"
+                                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                             To="1.1" Duration="0:0:0.1"/>
+                                                            <DoubleAnimation Storyboard.TargetName="ThumbShadow"
+                                                                             Storyboard.TargetProperty="Opacity"
+                                                                             To="0.5" Duration="0:0:0.1"/>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </EventTrigger>
+                                                <EventTrigger RoutedEvent="Thumb.MouseLeave">
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="ThumbEllipse"
+                                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                             To="1" Duration="0:0:0.1"/>
+                                                            <DoubleAnimation Storyboard.TargetName="ThumbEllipse"
+                                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                             To="1" Duration="0:0:0.1"/>
+                                                            <DoubleAnimation Storyboard.TargetName="ThumbShadow"
+                                                                             Storyboard.TargetProperty="Opacity"
+                                                                             To="0.3" Duration="0:0:0.1"/>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </EventTrigger>
+                                            </ControlTemplate.Triggers>
                                         </ControlTemplate>
                                     </Thumb.Template>
-                                    <Thumb.Triggers>
-                                        <EventTrigger RoutedEvent="Thumb.MouseEnter">
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetName="ThumbEllipse"
-                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                                                                     To="1.1" Duration="0:0:0.1"/>
-                                                    <DoubleAnimation Storyboard.TargetName="ThumbEllipse"
-                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
-                                                                     To="1.1" Duration="0:0:0.1"/>
-                                                    <DoubleAnimation Storyboard.TargetName="ThumbShadow"
-                                                                     Storyboard.TargetProperty="Opacity"
-                                                                     To="0.5" Duration="0:0:0.1"/>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </EventTrigger>
-                                        <EventTrigger RoutedEvent="Thumb.MouseLeave">
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetName="ThumbEllipse"
-                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                                                                     To="1" Duration="0:0:0.1"/>
-                                                    <DoubleAnimation Storyboard.TargetName="ThumbEllipse"
-                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
-                                                                     To="1" Duration="0:0:0.1"/>
-                                                    <DoubleAnimation Storyboard.TargetName="ThumbShadow"
-                                                                     Storyboard.TargetProperty="Opacity"
-                                                                     To="0.3" Duration="0:0:0.1"/>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </EventTrigger>
-                                    </Thumb.Triggers>
                                 </Thumb>
                             </Track.Thumb>
                             <Track.IncreaseRepeatButton>

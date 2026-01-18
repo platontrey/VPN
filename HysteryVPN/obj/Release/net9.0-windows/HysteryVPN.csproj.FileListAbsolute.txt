@@ -22,3 +22,15 @@ D:\Projects\HysteryVPN\HysteryVPN\bin\Release\net9.0-windows\HysteryVPN.pdb
 D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net9.0-windows\HysteryVPN.genruntimeconfig.cache
 D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net9.0-windows\ref\HysteryVPN.dll
 D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net9.0-windows\HysteryVPN.sourcelink.json
+D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net9.0-windows\HysteryVPN.csproj.AssemblyReference.cache
+D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net9.0-windows\GeneratedInternalTypeHelper.g.cs
+D:\Projects\HysteryVPN\HysteryVPN\bin\Release\net9.0-windows\CommunityToolkit.Common.dll
+D:\Projects\HysteryVPN\HysteryVPN\bin\Release\net9.0-windows\CommunityToolkit.Diagnostics.dll
+D:\Projects\HysteryVPN\HysteryVPN\bin\Release\net9.0-windows\CommunityToolkit.Mvvm.dll
+D:\Projects\HysteryVPN\HysteryVPN\bin\Release\net9.0-windows\HelixToolkit.dll
+D:\Projects\HysteryVPN\HysteryVPN\bin\Release\net9.0-windows\HelixToolkit.Geometry.dll
+D:\Projects\HysteryVPN\HysteryVPN\bin\Release\net9.0-windows\HelixToolkit.Maths.dll
+D:\Projects\HysteryVPN\HysteryVPN\bin\Release\net9.0-windows\HelixToolkit.Wpf.dll
+D:\Projects\HysteryVPN\HysteryVPN\bin\Release\net9.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+D:\Projects\HysteryVPN\HysteryVPN\bin\Release\net9.0-windows\Microsoft.Extensions.Logging.Abstractions.dll
+D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net9.0-windows\HysteryVPN.csproj.Up2Date
