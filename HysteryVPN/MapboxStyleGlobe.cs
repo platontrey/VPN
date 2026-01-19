@@ -44,7 +44,7 @@ namespace HysteryVPN
         private const double RotationSensitivity = 0.005;
         private const double PanSensitivity = 0.001;
         private const double MinCameraDistance = 1.001;
-        private const double MaxCameraDistance = 20.0;
+        private const double MaxCameraDistance = 1000.0;
         private const double MinPhi = 0.01;
         private const double MaxPhi = Math.PI - 0.01;
         private const double MinPitch = 0;
@@ -546,8 +546,9 @@ namespace HysteryVPN
             pitch += (targetPitch - pitch) * SmoothFactor;
             cameraDistance += (targetDistance - cameraDistance) * SmoothFactor;
 
-            // В Google Earth стиле lookAtPoint всегда в центре
-            lookAtPoint = new Point3D(0, 0, 0);
+            // Интерполяция lookAtPoint
+            Vector3D deltaLookAt = targetLookAtPoint - lookAtPoint;
+            lookAtPoint += deltaLookAt * LookAtSmoothFactor;
 
             if (isAnimatingToPoint)
             {
@@ -705,24 +706,9 @@ namespace HysteryVPN
                     }
                 }
 
-                if (surfacePoint.HasValue)
-                {
-                    PerspectiveCamera pc = (PerspectiveCamera)this.Camera;
-                    Point3D pos = pc.Position;
-                    Vector3D v = pos - surfacePoint.Value;
-                    Vector3D v2 = v * zoomFactor;
-                    Point3D pos2 = surfacePoint.Value + v2;
-                    
-                    double newDistance = v2.Length;
-                    newDistance = Math.Max(MinCameraDistance, Math.Min(MaxCameraDistance, newDistance));
-                    
-                    targetDistance = newDistance;
-                    targetLookAtPoint = surfacePoint.Value; // Устанавливаем точку фокуса на поверхность
-                }
-                else
-                {
-                    targetDistance = Math.Max(MinCameraDistance, Math.Min(MaxCameraDistance, targetDistance * zoomFactor));
-                }
+                // Для всех случаев зума просто меняем дистанцию, сохраняя текущий фокус
+                targetDistance = Math.Max(MinCameraDistance, Math.Min(MaxCameraDistance, targetDistance * zoomFactor));
+                // targetLookAtPoint остается прежним
                 
                 velocityDistance = 0;
                 e.Handled = true;
@@ -790,8 +776,10 @@ namespace HysteryVPN
 
                 pc.Position = new Point3D(x, y, z);
 
-                // 2. Камера всегда смотрит на центр
-                pc.LookDirection = new Vector3D(-x, -y, -z);
+                // 2. Камера смотрит на lookAtPoint
+                Vector3D lookDir = lookAtPoint - pc.Position;
+                lookDir.Normalize();
+                pc.LookDirection = lookDir;
 
                 // 3. Рассчитываем UpDirection
                 // На полюсах используем специальную логику для избежания gimbal lock
