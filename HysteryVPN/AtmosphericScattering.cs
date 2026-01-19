@@ -11,7 +11,7 @@ namespace HysteryVPN
         // Параметры атмосферы (как у Mapbox)
         private readonly Color atmosphereColor = Colors.White;
         private readonly double earthRadius = 1.0;
-        private readonly double atmosphereRadius = 1.02;
+        private readonly double atmosphereRadius = 1.01;
         private readonly double scatteringCoefficient = 0.1;
 
         public GeometryModel3D CreateAtmosphericGlow(MeshGeometry3D earthMesh)
@@ -52,13 +52,19 @@ namespace HysteryVPN
         {
             var materialGroup = new MaterialGroup();
 
-            // Используйте очень светлый цвет, но с низкой прозрачностью (альфа 20-40)
-            var glowColor = Color.FromArgb(30, 220, 235, 255);
-
-            // Только EmissiveMaterial! Diffuse здесь делает атмосферу серой и грязной
+            // Основной слой атмосферы
+            var glowColor = Color.FromArgb(40, 200, 230, 255);
             var emissive = new EmissiveMaterial(new SolidColorBrush(glowColor));
-
             materialGroup.Children.Add(emissive);
+
+            // Слой Bloom (мягкое внешнее свечение)
+            // В WPF мы имитируем это через RadialGradientBrush на материале
+            var bloomBrush = new RadialGradientBrush();
+            bloomBrush.GradientStops.Add(new GradientStop(Color.FromArgb(60, 100, 200, 255), 0.85));
+            bloomBrush.GradientStops.Add(new GradientStop(Color.FromArgb(0, 50, 150, 255), 1.0));
+            
+            var bloomMaterial = new EmissiveMaterial(bloomBrush);
+            materialGroup.Children.Add(bloomMaterial);
 
             return materialGroup;
         }
