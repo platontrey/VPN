@@ -2,13 +2,14 @@
 using System.Data;
 using System.Windows;
 using Microsoft.Win32;
+using Application = System.Windows.Application;
 
 namespace HysteryVPN;
 
 /// <summary>
 /// Interaction logic for App.xaml
 /// </summary>
-public partial class App : Application
+public partial class App : System.Windows.Application
 {
     protected override void OnStartup(StartupEventArgs e)
     {

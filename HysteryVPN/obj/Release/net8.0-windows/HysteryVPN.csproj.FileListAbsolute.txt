@@ -1,0 +1,8 @@
+D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net8.0-windows\HysteryVPN.csproj.AssemblyReference.cache
+D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net8.0-windows\Themes\DarkTheme.baml
+D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net8.0-windows\Themes\LightTheme.baml
+D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net8.0-windows\MainWindow.g.cs
+D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net8.0-windows\App.g.cs
+D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net8.0-windows\GeneratedInternalTypeHelper.g.cs
+D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net8.0-windows\HysteryVPN_MarkupCompile.cache
+D:\Projects\HysteryVPN\HysteryVPN\obj\Release\net8.0-windows\HysteryVPN_MarkupCompile.lref

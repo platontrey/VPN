@@ -14,11 +14,61 @@ using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using System.Linq;
 using HelixToolkit.Wpf;
+using System.Windows.Media.Media3D;
+using System.Windows.Media.Animation;
+using WinForms = System.Windows.Forms;
+using Wpf = System.Windows;
+using Point = System.Windows.Point;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using Size = System.Windows.Size;
+using Brushes = System.Windows.Media.Brushes;
+
+using HysteryVPN.Services;
+using HysteryVPN.Models;
+using HysteryVPN.Rendering;
 
 namespace HysteryVPN
 {
+    /// <summary>
+    /// Уровень качества рендеринга.
+    /// </summary>
+    public enum QualityLevel
+    {
+        Low = 32,
+        Medium = 48,
+        High = 64,
+        Ultra = 96
+    }
     public partial class MainWindow : Window
     {
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll")]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MSLLHOOKSTRUCT
+        {
+            public int pt_x;
+            public int pt_y;
+            public int mouseData;
+            public int flags;
+            public int time;
+            public IntPtr dwExtraInfo;
+        }
+
+        private delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        private const int WH_MOUSE_LL = 14;
+        private const int WM_MOUSEWHEEL = 0x020A;
+
+        private HookProc _mouseHookProc;
+        private IntPtr _mouseHookHandle = IntPtr.Zero;
+
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 
         [DllImport("dwmapi.dll")]
@@ -33,6 +83,17 @@ namespace HysteryVPN
         private bool _isDragging = false;
         private Point _lastMousePosition;
         private Ellipse? _userMarker;
+
+        // For 3D Globe
+        private double orbitRadius = 5;
+        private double orbitAngle = 0;
+        private double verticalAngle = 0;
+        private double zoomFactor = 1;
+        private double orbitVelocity = 0;
+        private double verticalVelocity = 0;
+        private bool isMouseDown = false;
+        private Point lastMousePosition;
+        private QualityLevel quality = QualityLevel.High;
 
         // Для плавных движений 2D карты
         private double velocityX = 0.0;
@@ -86,6 +147,125 @@ namespace HysteryVPN
 
             _logger.Log("Ready. Paste your hy2:// link and press CONNECT.");
             _logger.Log("Logs are copyable (Ctrl+C).");
+
+            // Initialize 3D Globe
+            InitializeGlobe();
+        }
+
+        private void InitializeGlobe()
+        {
+            // OpenGL инициализируется в OpenGLControl
+            // Важно: WindowsFormsHost/WinForms могут «съедать» колесо мыши, поэтому подписываемся на несколько источников.
+            // Но мы НЕ подписываемся на this.MouseWheel, чтобы прокрутка из UI не долетала до глобуса.
+            openGLHost.PreviewMouseWheel += MainWindow_MouseWheel; // tunneling событие
+            openGLHost.MouseWheel += MainWindow_MouseWheel; // bubbling событие
+            openGLControl.MouseWheel += OpenGLControl_MouseWheel; // обработка колеса мыши на WinForms контроле
+
+            // Установка Win32 хука для колеса мыши
+            _mouseHookProc = MouseHookCallback;
+            _mouseHookHandle = SetWindowsHookEx(WH_MOUSE_LL, _mouseHookProc, IntPtr.Zero, 0);
+
+            openGLHost.MouseLeftButtonDown += Viewport3D_MouseLeftButtonDown;
+            openGLHost.MouseLeftButtonUp += Viewport3D_MouseLeftButtonUp;
+            openGLHost.MouseMove += Viewport3D_MouseMove;
+
+            // Инициализация маркера локации (упрощённо, без 3D модели)
+            CompositionTarget.Rendering += OnRenderingGlobe;
+
+            openGLControl.CameraRotated += (yaw, pitch) =>
+            {
+                // Синхронизируем углы в MainWindow
+                this.orbitAngle = yaw;
+                this.verticalAngle = pitch;
+            };
+        }
+
+        private void OpenGLControl_MouseWheel(object? sender, WinForms.MouseEventArgs e)
+        {
+            if (openGLHost.Visibility != Visibility.Visible)
+                return;
+
+            AdjustGlobeZoom(e.Delta);
+        }
+
+        private void AdjustGlobeZoom(int wheelDelta)
+        {
+            // wheelDelta обычно кратен 120
+            double zoomSpeed = 0.001 * zoomFactor; // адаптивная скорость зума
+            zoomFactor += wheelDelta * zoomSpeed;
+            if (zoomFactor < 0.2) zoomFactor = 0.2;
+            if (zoomFactor > 10) zoomFactor = 10;
+        }
+
+        private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0 && wParam == (IntPtr)WM_MOUSEWHEEL)
+            {
+                if (openGLHost.Visibility == Visibility.Visible)
+                {
+                    // Извлекаем delta из MSLLHOOKSTRUCT
+                    MSLLHOOKSTRUCT hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+                    Point mousePos = new Point(hookStruct.pt_x, hookStruct.pt_y);
+
+                    try
+                    {
+                        var hostHandle = openGLHost.Handle; // Handle WinForms контрола
+                        var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+
+                        // 1. Проверяем, что наше окно активно (в фокусе)
+                        IntPtr foregroundHwnd = GetForegroundWindow();
+                        if (foregroundHwnd != myHwnd && !IsChild(myHwnd, foregroundHwnd))
+                        {
+                            return CallNextHookEx(_mouseHookHandle, nCode, wParam, lParam);
+                        }
+
+                        // 2. Проверяем, что окно не свернуто
+                        if (IsIconic(myHwnd))
+                        {
+                            return CallNextHookEx(_mouseHookHandle, nCode, wParam, lParam);
+                        }
+
+                        // 3. Проверяем границы OpenGL области
+                        if (GetWindowRect(hostHandle, out RECT hostRect))
+                        {
+                            Rect rect = new Rect(hostRect.Left, hostRect.Top, hostRect.Right - hostRect.Left, hostRect.Bottom - hostRect.Top);
+                            
+                            if (rect.Contains(mousePos))
+                            {
+                                int delta = (short)(hookStruct.mouseData >> 16);
+                                AdjustGlobeZoom(delta);
+                                return (IntPtr)1; // Блокируем только если мы активны и над OpenGL
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // В случае ошибки просто пропускаем
+                    }
+                }
+            }
+            return CallNextHookEx(_mouseHookHandle, nCode, wParam, lParam);
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool IsIconic(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern bool IsChild(IntPtr hWndParent, IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
         }
 
         private void LinkInput_TextChanged(object sender, TextChangedEventArgs e)
@@ -195,6 +375,10 @@ namespace HysteryVPN
         {
             _vpnManager.StopVpn();
             CompositionTarget.Rendering -= OnRendering2D;
+            if (_mouseHookHandle != IntPtr.Zero)
+            {
+                UnhookWindowsHookEx(_mouseHookHandle);
+            }
             base.OnClosed(e);
         }
 
@@ -217,7 +401,7 @@ namespace HysteryVPN
             // Центрирование камеры на местоположении пользователя с приближением (отложено)
             if (_hasLocation)
             {
-                Dispatcher.InvokeAsync(() => CenterOnUserLocation());
+                _ = Dispatcher.InvokeAsync(() => CenterOnUserLocation());
             }
 
             // Подписка на рендеринг для плавных движений 2D карты (по умолчанию 2D)
@@ -505,7 +689,7 @@ namespace HysteryVPN
             }
         }
 
-        private void OnRendering2D(object sender, EventArgs e)
+        private void OnRendering2D(object? sender, EventArgs e)
         {
             // Если мышь отпущена, продолжаем двигаться по инерции
             if (!_isDragging)
@@ -533,7 +717,7 @@ namespace HysteryVPN
         {
             try
             {
-                string json = await File.ReadAllTextAsync("countries.geojson");
+                string json = await File.ReadAllTextAsync("Resources/countries_2d.geojson");
                 _geoJsonData = JsonSerializer.Deserialize<GeoJsonFeatureCollection>(json);
                 DrawMap();
             }
@@ -644,7 +828,7 @@ namespace HysteryVPN
             Point startPoint = new Point();
             Point lastPoint = new Point();
 
-            int step = Math.Max(1, ring.Count / 5000); // Адаптивный шаг для одинакового отображения на разных разрешениях
+            int step = 1; // Использовать все точки для полного разрешения
             for (int i = 0; i < ring.Count; i += step)
             {
                 var coord = ring[i];
@@ -684,7 +868,7 @@ namespace HysteryVPN
 
         private void MapTypeSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (MapRoot == null || GlobeContainer == null) return;
+            if (MapRoot == null || openGLHost == null) return;
 
             ComboBoxItem item = MapTypeSelector.SelectedItem as ComboBoxItem;
             if (item != null)
@@ -692,7 +876,7 @@ namespace HysteryVPN
                 if (item.Content.ToString() == "3D Globe")
                 {
                     MapRoot.Visibility = Visibility.Collapsed;
-                    GlobeContainer.Visibility = Visibility.Visible;
+                    openGLHost.Visibility = Visibility.Visible;
                     GlobeControls.Visibility = Visibility.Visible;
 
                     // Отписка от рендеринга 2D карты
@@ -701,7 +885,7 @@ namespace HysteryVPN
                 else
                 {
                     MapRoot.Visibility = Visibility.Visible;
-                    GlobeContainer.Visibility = Visibility.Collapsed;
+                    openGLHost.Visibility = Visibility.Collapsed;
                     GlobeControls.Visibility = Visibility.Collapsed;
 
                     // Подписка на рендеринг для плавных движений 2D карты
@@ -713,35 +897,96 @@ namespace HysteryVPN
 
         private void ToggleAtmosphere_Checked(object sender, RoutedEventArgs e)
         {
-            if (GlobeContainer is MapboxStyleGlobe globe)
-            {
-                var checkbox = sender as CheckBox;
-                globe.SetAtmosphereVisible(checkbox?.IsChecked ?? true);
-            }
+            // Atmosphere not implemented in Earth3D
         }
 
         private void ToggleStars_Checked(object sender, RoutedEventArgs e)
         {
-            if (GlobeContainer is MapboxStyleGlobe globe)
-            {
-                var checkbox = sender as CheckBox;
-                globe.SetStarsVisible(checkbox?.IsChecked ?? true);
-            }
+            // Stars are always visible in Earth3D
         }
 
         private void RotationSpeed_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (GlobeContainer is MapboxStyleGlobe globe)
-            {
-                globe.SetRotationSpeed(e.NewValue);
-            }
+            // Adjust rotation speed if needed
         }
 
         private void ResetView_Click(object sender, RoutedEventArgs e)
         {
-            if (GlobeContainer is MapboxStyleGlobe globe)
+            // Reset globe view
+            orbitAngle = 0;
+            verticalAngle = 0;
+            zoomFactor = 1;
+            // Обновление камеры в OpenGL
+        }
+
+
+        private void OnRenderingGlobe(object sender, EventArgs e)
+        {
+            orbitAngle += orbitVelocity;
+            verticalAngle += verticalVelocity;
+            verticalAngle = Math.Max(-Math.PI / 2, Math.Min(Math.PI / 2, verticalAngle));
+
+            orbitVelocity *= 0.98;
+            verticalVelocity *= 0.98;
+
+            orbitAngle += 0.0001;
+
+            // Применяем zoomFactor к радиусу орбиты.
+            // Чем больше zoomFactor, тем ближе камера (меньше радиус).
+            // Базовый радиус 5.0, минимальный пусть будет 1.2 (чуть больше радиуса Земли 1.0), максимальный 20.0.
+            double currentRadius = 5.0 / zoomFactor;
+            currentRadius = Math.Clamp(currentRadius, 1.1, 20.0);
+
+            double x = currentRadius * Math.Cos(orbitAngle) * Math.Cos(verticalAngle);
+            double y = currentRadius * Math.Sin(verticalAngle);
+            double z = currentRadius * Math.Sin(orbitAngle) * Math.Cos(verticalAngle);
+
+            // Обновление камеры в OpenGL
+            openGLControl.UpdateCamera(new System.Numerics.Vector3((float)x, (float)y, (float)z));
+
+            // Обновление направления Солнца (для атмосферы)
+            var sunDir = System.Numerics.Vector3.Normalize(new System.Numerics.Vector3(1, 0, 1));
+            openGLControl.UpdateSunDirection(sunDir);
+        }
+
+        private void MainWindow_MouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            // Это событие вызывается только для openGLHost (PreviewMouseWheel/MouseWheel)
+            if (openGLHost.Visibility == Visibility.Visible)
             {
-                globe.ResetView();
+                AdjustGlobeZoom(e.Delta);
+                e.Handled = true;
+            }
+        }
+
+        private void Viewport3D_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            isMouseDown = true;
+            lastMousePosition = e.GetPosition(this);
+            openGLHost.CaptureMouse();
+            openGLControl.Focus();
+        }
+
+        private void Viewport3D_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            isMouseDown = false;
+            openGLHost.ReleaseMouseCapture();
+            openGLControl.Focus();
+        }
+
+        private void Viewport3D_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (isMouseDown)
+            {
+                Point currentPosition = e.GetPosition(this);
+                double deltaX = currentPosition.X - lastMousePosition.X;
+                double deltaY = currentPosition.Y - lastMousePosition.Y;
+
+                orbitVelocity += deltaX * 0.0005;
+                verticalVelocity += deltaY * 0.0005;
+
+                lastMousePosition = currentPosition;
+                openGLControl.Focus();
             }
         }
     }

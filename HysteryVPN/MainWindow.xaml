@@ -3,6 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:h="http://helix-toolkit.org/wpf"
         xmlns:local="clr-namespace:HysteryVPN"
+        xmlns:rendering="clr-namespace:HysteryVPN.Rendering"
+        xmlns:wfi="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
         Title="HysteryVPN" Height="650" Width="1000"
         Background="{StaticResource BackgroundBrush}" WindowStartupLocation="CenterScreen"
         ResizeMode="CanResizeWithGrip"
@@ -199,7 +201,9 @@
                 <Canvas x:Name="VectorMapCanvas" Background="Transparent"/>
                 <Canvas x:Name="MapCanvas"/>
             </Canvas>
-            <local:MapboxStyleGlobe x:Name="GlobeContainer" Grid.Row="1" Visibility="Collapsed"/>
+            <wfi:WindowsFormsHost x:Name="openGLHost" Grid.Row="1" Visibility="Collapsed">
+                <rendering:OpenGLControl x:Name="openGLControl" />
+            </wfi:WindowsFormsHost>
             
             <!-- Панель управления глобусом -->
             <Border x:Name="GlobeControls" Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="20" Background="#1A1A1A" CornerRadius="8" Opacity="0.95" Width="200" Visibility="Collapsed">
