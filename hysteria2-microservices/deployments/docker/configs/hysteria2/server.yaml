@@ -1,0 +1,53 @@
+listen: :443
+
+# TLS configuration
+tls:
+  cert: /etc/hysteria/server.crt
+  key: /etc/hysteria/server.key
+
+# Authentication - will be managed by API
+auth:
+  type: password
+  password: "default_password_change_via_api"
+
+# Bandwidth limits
+bandwidth:
+  up: "500 mbps"
+  down: "1 gbps"
+
+# Masquerade as a website for censorship resistance
+masquerade:
+  type: proxy
+  proxy:
+    url: https://www.google.com
+    rewriteHost: true
+
+# Access control
+acl:
+  file: /etc/hysteria/acl.txt
+  geoip: /etc/hysteria/geoip.dat
+
+# Traffic statistics API
+trafficStats:
+  listen: :9999
+  secret: "hysteria_stats_secret"
+
+# QUIC configuration
+quic:
+  initStreamReceiveWindow: 8388608
+  maxStreamReceiveWindow: 8388608
+  initConnReceiveWindow: 20971520
+  maxConnReceiveWindow: 20971520
+  maxIdleTimeout: 30s
+  maxUdpReceiveQueueSize: 1024
+  disablePathMTUDiscovery: false
+
+# Outbound configuration
+outbound:
+  name: direct
+
+# Disable UDP if not needed
+udpDisabled: false
+
+# Connection limits
+maxIncomingStreams: 1000

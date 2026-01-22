@@ -1,4 +1,4 @@
-﻿<Application x:Class="HysteryVPN.App"
+<Application x:Class="HysteryVPN.App"
               xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
               xmlns:local="clr-namespace:HysteryVPN"
@@ -8,6 +8,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <!-- Theme will be loaded here -->
             </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

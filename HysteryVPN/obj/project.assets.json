@@ -4702,6 +4702,7 @@
   },
   "projectFileDependencyGroups": {
     "net9.0-windows7.0": [
+      "CommunityToolkit.Mvvm >= 8.3.2",
       "HelixToolkit.Wpf >= 3.1.2",
       "Silk.NET.Input >= 2.21.0",
       "Silk.NET.OpenGL >= 2.21.0",
@@ -4761,6 +4762,10 @@
       "net9.0-windows7.0": {
         "targetAlias": "net9.0-windows",
         "dependencies": {
+          "CommunityToolkit.Mvvm": {
+            "target": "Package",
+            "version": "[8.3.2, )"
+          },
           "HelixToolkit.Wpf": {
             "target": "Package",
             "version": "[3.1.2, )"

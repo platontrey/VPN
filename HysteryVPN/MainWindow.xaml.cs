@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
@@ -26,6 +26,7 @@ using Brushes = System.Windows.Media.Brushes;
 using HysteryVPN.Services;
 using HysteryVPN.Models;
 using HysteryVPN.Rendering;
+using HysteryVPN.ViewModels;
 
 namespace HysteryVPN
 {
@@ -73,11 +74,8 @@ namespace HysteryVPN
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
-        private readonly SettingsManager _settingsManager;
-        private readonly Logger _logger;
-        private readonly ConfigGenerator _configGenerator;
-        private readonly RouteManager _routeManager;
-        private readonly VpnManager _vpnManager;
+
+        private MainViewModel _viewModel;
         private double _currentLat = 0, _currentLon = 0;
         private bool _hasLocation = false;
         private bool _isDragging = false;
@@ -111,46 +109,16 @@ namespace HysteryVPN
         public MainWindow()
         {
             InitializeComponent();
+            _viewModel = new MainViewModel();
+            DataContext = _viewModel;
+
             this.Loaded += MainWindow_Loaded;
             this.SizeChanged += MainWindow_SizeChanged;
-
-            _logger = new Logger(LogText, Dispatcher);
-            _settingsManager = new SettingsManager(_logger);
-            _configGenerator = new ConfigGenerator(_logger);
-            _routeManager = new RouteManager(_logger);
-            _vpnManager = new VpnManager(_logger, _configGenerator, _routeManager);
-            
-                        StatusText.Text = "Not connected";
-                        ConnectionText.Text = "---";
-                        IpText.Text = "Unprotected";
-            
-                        // Загрузка сохраненной ссылки
-           string savedLink = _settingsManager.GetSetting<string>("SavedLink", "");
-           _logger.Log($"Loaded saved link: '{savedLink}'");
-           if (!string.IsNullOrEmpty(savedLink))
-           {
-               LinkInput.Text = savedLink;
-               _logger.Log($"Set LinkInput.Text to: '{LinkInput.Text}'");
-           }
-
-            // Загрузка состояния чекбокса TURN
-             EnableTurnToggle.IsChecked = _settingsManager.GetSetting<bool>("EnableTurn", false);
-
-             // Загрузка состояния чекбокса Zapret
-             EnableZapretToggle.IsChecked = _settingsManager.GetSetting<bool>("EnableZapret", false);
-
-             LinkInput.TextChanged += LinkInput_TextChanged;
-             EnableTurnToggle.Checked += EnableTurnToggle_Checked;
-             EnableTurnToggle.Unchecked += EnableTurnToggle_Unchecked;
-             EnableZapretToggle.Checked += EnableZapretToggle_Checked;
-             EnableZapretToggle.Unchecked += EnableZapretToggle_Unchecked;
-
-            _logger.Log("Ready. Paste your hy2:// link and press CONNECT.");
-            _logger.Log("Logs are copyable (Ctrl+C).");
 
             // Initialize 3D Globe
             InitializeGlobe();
         }
+
 
         private void InitializeGlobe()
         {
@@ -268,112 +236,9 @@ namespace HysteryVPN
             public int Bottom;
         }
 
-        private void LinkInput_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            string link = LinkInput.Text.Trim();
-            _logger.Log($"Saving link: '{link}'");
-            _settingsManager.SetSetting("SavedLink", link);
-        }
-
-        private void EnableTurnToggle_Checked(object sender, RoutedEventArgs e)
-        {
-            _settingsManager.SetSetting("EnableTurn", true);
-        }
-
-        private void EnableTurnToggle_Unchecked(object sender, RoutedEventArgs e)
-        {
-            _settingsManager.SetSetting("EnableTurn", false);
-        }
-
-        private void EnableZapretToggle_Checked(object sender, RoutedEventArgs e)
-        {
-            _settingsManager.SetSetting("EnableZapret", true);
-        }
-
-        private void EnableZapretToggle_Unchecked(object sender, RoutedEventArgs e)
-        {
-            _settingsManager.SetSetting("EnableZapret", false);
-        }
-
-
-        private async void ActionBtn_Click(object sender, RoutedEventArgs e)
-        {
-            if (_vpnManager.IsConnected)
-            {
-                _vpnManager.StopVpn();
-                await UpdateUI();
-            }
-            else
-            {
-                string link = LinkInput.Text.Trim();
-                bool enableTurn = EnableTurnToggle.IsChecked ?? false;
-                bool enableZapret = EnableZapretToggle.IsChecked ?? false;
-
-                // Show progress and disable controls
-                ConnectionProgressPanel.Visibility = Visibility.Visible;
-                ActionBtn.IsEnabled = false;
-                LinkInput.IsEnabled = false;
-                EnableTurnToggle.IsEnabled = false;
-                EnableZapretToggle.IsEnabled = false;
-
-                try
-                {
-                    await _vpnManager.StartVpnAsync(link, enableTurn, enableZapret);
-                    await UpdateUI();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError($"Failed to start VPN: {ex.Message}");
-                    await UpdateUI();
-                }
-                finally
-                {
-                    // Hide progress and re-enable controls
-                    ConnectionProgressPanel.Visibility = Visibility.Collapsed;
-                    ActionBtn.IsEnabled = true;
-                    LinkInput.IsEnabled = true;
-                    EnableTurnToggle.IsEnabled = true;
-                    EnableZapretToggle.IsEnabled = true;
-                }
-            }
-        }
-
-        private async Task UpdateUI()
-        {
-            StatusText.Text = _vpnManager.IsConnected ? "Connected" : "Not connected";
-            ProtectionStatusText.Text = _vpnManager.IsConnected ? "You are protected" : "You are unprotected";
-            ConnectionText.Text = _vpnManager.IsConnected ? "Active" : "---";
-            IpText.Text = _vpnManager.IsConnected ? MaskIp(_vpnManager.ServerIp) : "Unprotected";
-            if (_vpnManager.IsConnected)
-            {
-                var countryCode = await GetCountryCodeAsync(_vpnManager.ServerIp);
-                await LoadFlagAsync(countryCode);
-            }
-            else
-            {
-                CountryFlag.Visibility = Visibility.Collapsed;
-            }
-            if (_vpnManager.IsConnected)
-            {
-                ActionBtn.Content = "DISCONNECT";
-                ActionBtn.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(231, 76, 60)); // Red
-                LinkInput.IsEnabled = false;
-                EnableTurnToggle.IsEnabled = false;
-                EnableZapretToggle.IsEnabled = false;
-            }
-            else
-            {
-                ActionBtn.Content = "CONNECT";
-                ActionBtn.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(46, 204, 113)); // Green
-                LinkInput.IsEnabled = true;
-                EnableTurnToggle.IsEnabled = true;
-                EnableZapretToggle.IsEnabled = true;
-            }
-        }
 
         protected override void OnClosed(EventArgs e)
         {
-            _vpnManager.StopVpn();
             CompositionTarget.Rendering -= OnRendering2D;
             if (_mouseHookHandle != IntPtr.Zero)
             {
@@ -389,7 +254,6 @@ namespace HysteryVPN
                 EnableDarkModeForWindow();
             }
             await LoadGeoJsonAsync();
-            await UpdateUI();
             await GetUserLocationAsync();
 
             // Инициализация целей для плавных движений
@@ -406,8 +270,6 @@ namespace HysteryVPN
 
             // Подписка на рендеринг для плавных движений 2D карты (по умолчанию 2D)
             CompositionTarget.Rendering += OnRendering2D;
-
-            _logger.Log("MainWindow loaded and user location fetched");
         }
 
         private void EnableDarkModeForWindow()
@@ -440,58 +302,6 @@ namespace HysteryVPN
             return true; // Default to dark
         }
 
-        private string MaskIp(string ip)
-        {
-            if (string.IsNullOrEmpty(ip)) return "Unprotected";
-            var parts = ip.Split('.');
-            if (parts.Length == 4)
-            {
-                return $"{parts[0]}.{parts[1]}.***.***";
-            }
-            return ip;
-        }
-
-        private async Task<string> GetCountryCodeAsync(string ip)
-        {
-            try
-            {
-                using var client = new HttpClient();
-                var response = await client.GetStringAsync($"http://ipapi.co/{ip}/country/");
-                return response.Trim().ToLower();
-            }
-            catch
-            {
-                return "";
-            }
-        }
-
-        private async Task LoadFlagAsync(string countryCode)
-        {
-            if (string.IsNullOrEmpty(countryCode))
-            {
-                CountryFlag.Visibility = Visibility.Collapsed;
-                return;
-            }
-            try
-            {
-                using var client = new HttpClient();
-                var imageBytes = await client.GetByteArrayAsync($"https://flagcdn.com/w40/{countryCode}.png");
-                var bitmap = new System.Windows.Media.Imaging.BitmapImage();
-                using (var stream = new System.IO.MemoryStream(imageBytes))
-                {
-                    bitmap.BeginInit();
-                    bitmap.StreamSource = stream;
-                    bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                    bitmap.EndInit();
-                }
-                CountryFlag.Source = bitmap;
-                CountryFlag.Visibility = Visibility.Visible;
-            }
-            catch
-            {
-                CountryFlag.Visibility = Visibility.Collapsed;
-            }
-        }
 
         private async Task GetUserLocationAsync()
         {
@@ -499,7 +309,6 @@ namespace HysteryVPN
             {
                 using var client = new HttpClient();
                 var response = await client.GetStringAsync("http://ip-api.com/json/");
-                _logger.Log($"API response: {response}");
                 var json = JsonDocument.Parse(response);
                 if (json.RootElement.TryGetProperty("lat", out var latProp) &&
                     json.RootElement.TryGetProperty("lon", out var lonProp))
@@ -507,17 +316,12 @@ namespace HysteryVPN
                     _currentLat = latProp.GetDouble();
                     _currentLon = lonProp.GetDouble();
                     _hasLocation = true;
-                    _logger.Log($"User location: lat {_currentLat}, lon {_currentLon}");
                     await Dispatcher.InvokeAsync(() => UpdateUserPosition(_currentLat, _currentLon));
-                }
-                else
-                {
-                    _logger.Log("Failed to parse location from API response");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Failed to get user location: {ex.Message}");
+                // Log error if needed
             }
         }
 
@@ -631,11 +435,15 @@ namespace HysteryVPN
             double canvasWidth = MapContainer.ActualWidth;
             double canvasHeight = MapContainer.ActualHeight;
 
+            // Maintain 1:1 aspect ratio for the map to prevent stretching
+            double mapWidth = canvasHeight * 1.0;
+            double xOffset = (canvasWidth - mapWidth) / 2;
+
             // Clamp latitude to avoid infinity
             lat = Math.Max(-85, Math.Min(85, lat));
 
             // Mercator projection
-            double x = (lon + 180) / 360 * canvasWidth;
+            double x = (lon + 180) / 360 * mapWidth + xOffset;
             double latRad = lat * Math.PI / 180;
             double mercY = Math.Log(Math.Tan(Math.PI / 4 + latRad / 2));
             double normalizedY = mercY / Math.PI; // -1 to 1
@@ -723,7 +531,7 @@ namespace HysteryVPN
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Failed to load GeoJSON: {ex.Message}");
+                // Log error if needed
             }
         }
 
@@ -806,7 +614,7 @@ namespace HysteryVPN
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error parsing coordinates for {feature.Properties.Name}: {ex.Message}");
+                // Log error if needed
                 return null;
             }
 
@@ -868,30 +676,11 @@ namespace HysteryVPN
 
         private void MapTypeSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (MapRoot == null || openGLHost == null) return;
-
+            if (_viewModel == null) return;
             ComboBoxItem item = MapTypeSelector.SelectedItem as ComboBoxItem;
             if (item != null)
             {
-                if (item.Content.ToString() == "3D Globe")
-                {
-                    MapRoot.Visibility = Visibility.Collapsed;
-                    openGLHost.Visibility = Visibility.Visible;
-                    GlobeControls.Visibility = Visibility.Visible;
-
-                    // Отписка от рендеринга 2D карты
-                    CompositionTarget.Rendering -= OnRendering2D;
-                }
-                else
-                {
-                    MapRoot.Visibility = Visibility.Visible;
-                    openGLHost.Visibility = Visibility.Collapsed;
-                    GlobeControls.Visibility = Visibility.Collapsed;
-
-                    // Подписка на рендеринг для плавных движений 2D карты
-                    CompositionTarget.Rendering -= OnRendering2D;
-                    CompositionTarget.Rendering += OnRendering2D;
-                }
+                _viewModel.MapTypeSelectorCommand.Execute(item.Content.ToString());
             }
         }
 

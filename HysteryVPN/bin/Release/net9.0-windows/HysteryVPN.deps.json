@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v9.0": {
       "HysteryVPN/1.0.0": {
         "dependencies": {
+          "CommunityToolkit.Mvvm": "8.3.2",
           "HelixToolkit.Wpf": "3.1.2",
           "Silk.NET.Input": "2.21.0",
           "Silk.NET.OpenGL": "2.21.0",

@@ -1,4 +1,4 @@
-﻿<Window x:Class="HysteryVPN.MainWindow"
+<Window x:Class="HysteryVPN.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:h="http://helix-toolkit.org/wpf"
@@ -76,7 +76,7 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-        </Style>
+         </Style>
 
     </Window.Resources>
 
@@ -105,10 +105,10 @@
 
                 <!-- 2. Status Area -->
                 <StackPanel Grid.Row="1" Margin="20,10">
-                    <TextBlock Name="StatusText" Text="Not connected" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,0,0,5"/>
-                    <TextBlock Name="ProtectionStatusText" Text="You are unprotected" Foreground="{StaticResource PrimaryTextBrush}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,15"/>
+                    <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,0,0,5"/>
+                    <TextBlock Text="{Binding ProtectionStatusText}" Foreground="{StaticResource PrimaryTextBrush}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,15"/>
 
-                    <Button Name="ActionBtn" Content="CONNECT" Height="40" Background="{StaticResource ButtonBackgroundBrush}" Foreground="{StaticResource ButtonForegroundBrush}" FontSize="14" FontWeight="Bold" Click="ActionBtn_Click">
+                    <Button Content="{Binding ActionButtonContent}" Height="40" Background="{Binding ActionButtonBackground}" Foreground="{StaticResource ButtonForegroundBrush}" FontSize="14" FontWeight="Bold" Command="{Binding ActionBtnCommand}">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border Background="{TemplateBinding Background}" CornerRadius="20" Padding="15,10">
@@ -123,7 +123,7 @@
                         </Button.Template>
                     </Button>
 
-                    <StackPanel Name="ConnectionProgressPanel" Orientation="Horizontal" Margin="0,10,0,0" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0" Visibility="{Binding IsConnectionProgressVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <TextBlock Name="ConnectionStatusText" Text="Connecting..." Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
                         <Border Background="{StaticResource SidebarBrush}" CornerRadius="3" Padding="1" VerticalAlignment="Center">
                             <ProgressBar Name="ConnectionProgressBar" Height="4" Width="118" IsIndeterminate="True" Background="Transparent" Foreground="{StaticResource AccentBrush}" BorderThickness="0"/>
@@ -134,18 +134,18 @@
                 <!-- 3. Link Input -->
                 <StackPanel Grid.Row="2" Margin="20,10">
                     <TextBlock Text="Hysteria 2 Link (hy2://)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,0,0,5"/>
-                    <TextBox Name="LinkInput" Height="35"
+                    <TextBox Height="35"
                                Background="{StaticResource TextBoxBackgroundBrush}" Foreground="{StaticResource TextBoxForegroundBrush}" BorderThickness="1" BorderBrush="{StaticResource TextBoxBorderBrush}"
                                Padding="5" VerticalContentAlignment="Center"
-                               Text=""/>
+                               Text="{Binding LinkInputText, UpdateSourceTrigger=PropertyChanged}"/>
 
                     <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
                         <TextBlock Text="Enable TURN Relay" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <CheckBox Name="EnableTurnToggle" Style="{StaticResource ToggleSwitchStyle}" VerticalAlignment="Center"/>
+                        <CheckBox IsChecked="{Binding EnableTurnToggle}" Style="{StaticResource ToggleSwitchStyle}" VerticalAlignment="Center"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                         <TextBlock Text="Enable Zapret (DPI Bypass)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <CheckBox Name="EnableZapretToggle" Style="{StaticResource ToggleSwitchStyle}" VerticalAlignment="Center"/>
+                        <CheckBox IsChecked="{Binding EnableZapretToggle}" Style="{StaticResource ToggleSwitchStyle}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -156,7 +156,7 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <TextBlock Text="Connection Log:" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="20,0,0,5"/>
-                    <TextBox Name="LogText" Grid.Row="1"
+                    <TextBox Grid.Row="1"
                                Background="{StaticResource LogBackgroundBrush}" Foreground="{StaticResource LogTextBrush}"
                                FontFamily="Consolas" FontSize="12"
                                TextWrapping="Wrap"
@@ -164,7 +164,8 @@
                                VerticalScrollBarVisibility="Auto"
                                BorderThickness="0"
                                Padding="20,10"
-                               AcceptsReturn="True"/>
+                               AcceptsReturn="True"
+                               Text="{Binding LogText}"/>
                 </Grid>
 
                 <!-- 5. Bottom -->
@@ -185,7 +186,7 @@
                 <ComboBoxItem Content="3D Globe"/>
             </ComboBox>
             <!-- Canvas теперь имеет прозрачный фон, чтобы ловить клики -->
-            <Canvas x:Name="MapRoot" Background="Transparent" Grid.Row="1"
+            <Canvas x:Name="MapRoot" Background="Transparent" Grid.Row="1" Visibility="{Binding MapRootVisibility}"
                     MouseWheel="MapRoot_MouseWheel"
                     MouseDown="MapRoot_MouseDown"
                     MouseMove="MapRoot_MouseMove"
@@ -201,12 +202,12 @@
                 <Canvas x:Name="VectorMapCanvas" Background="Transparent"/>
                 <Canvas x:Name="MapCanvas"/>
             </Canvas>
-            <wfi:WindowsFormsHost x:Name="openGLHost" Grid.Row="1" Visibility="Collapsed">
+            <wfi:WindowsFormsHost x:Name="openGLHost" Grid.Row="1" Visibility="{Binding OpenGLHostVisibility}">
                 <rendering:OpenGLControl x:Name="openGLControl" />
             </wfi:WindowsFormsHost>
             
             <!-- Панель управления глобусом -->
-            <Border x:Name="GlobeControls" Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="20" Background="#1A1A1A" CornerRadius="8" Opacity="0.95" Width="200" Visibility="Collapsed">
+            <Border Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="20" Background="#1A1A1A" CornerRadius="8" Opacity="0.95" Width="200" Visibility="{Binding GlobeControlsVisibility}">
                 <StackPanel Margin="15">
                     <TextBlock Text="GLOBE VIEW" Foreground="#808080" FontSize="11" FontWeight="Bold"/>
                     <Separator Background="#333333" Margin="0,5,0,10"/>
@@ -231,7 +232,7 @@
 
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center">
                         <TextBlock Text="CONNECTION" Foreground="{StaticResource SecondaryTextBrush}" FontSize="10"/>
-                        <TextBlock Name="ConnectionText" Text="---" Foreground="{StaticResource PrimaryTextBrush}" FontSize="14" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding ConnectionText}" Foreground="{StaticResource PrimaryTextBrush}" FontSize="14" FontWeight="Bold"/>
                     </StackPanel>
 
                     <Rectangle Grid.Column="1" Width="1" Fill="{StaticResource BorderBrush}" Margin="0,15"/>
@@ -239,8 +240,8 @@
                     <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Center">
                         <TextBlock Text="IP ADDRESS" Foreground="{StaticResource SecondaryTextBrush}" FontSize="10"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <Image Name="CountryFlag" Width="16" Height="16" Margin="0,0,5,0" Visibility="Collapsed"/>
-                            <TextBlock Name="IpText" Text="Unprotected" Foreground="{StaticResource PrimaryTextBrush}" FontSize="14"/>
+                            <Image Source="{Binding CountryFlagSource}" Width="16" Height="16" Margin="0,0,5,0" Visibility="{Binding CountryFlagVisibility}"/>
+                            <TextBlock Text="{Binding IpText}" Foreground="{StaticResource PrimaryTextBrush}" FontSize="14"/>
                         </StackPanel>
                     </StackPanel>
 

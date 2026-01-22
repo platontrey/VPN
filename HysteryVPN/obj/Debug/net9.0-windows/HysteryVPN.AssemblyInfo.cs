@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HysteryVPN")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f56aa3e7bc8844838ac818151851844b53c55a62")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0bd10bc254b26ed218849d70f0184317da3ea979")]
 [assembly: System.Reflection.AssemblyProductAttribute("HysteryVPN")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HysteryVPN")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

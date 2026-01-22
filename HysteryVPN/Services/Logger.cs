@@ -7,23 +7,19 @@ namespace HysteryVPN.Services
 {
     public class Logger
     {
-        private readonly TextBox _logTextBox;
+        private readonly Action<string> _logAction;
         private readonly Dispatcher _dispatcher;
 
-        public Logger(TextBox logTextBox, Dispatcher dispatcher)
+        public Logger(Action<string> logAction, Dispatcher dispatcher)
         {
-            _logTextBox = logTextBox;
+            _logAction = logAction;
             _dispatcher = dispatcher;
         }
 
         public void Log(string message)
         {
-            string logMessage = $"[{DateTime.Now:HH:mm:ss}] {message}\n";
-            _dispatcher.Invoke(() =>
-            {
-                _logTextBox.AppendText(logMessage);
-                _logTextBox.ScrollToEnd();
-            });
+            string logMessage = $"[{DateTime.Now:HH:mm:ss}] {message}";
+            _dispatcher.Invoke(() => _logAction(logMessage + "\n"));
         }
 
         public void LogCore(string message)
@@ -31,11 +27,7 @@ namespace HysteryVPN.Services
             if (string.IsNullOrWhiteSpace(message)) return;
             // Очистка цветов консоли
             string clean = System.Text.RegularExpressions.Regex.Replace(message, @"\x1B\[[^@-~]*[@-~]", "");
-            _dispatcher.Invoke(() =>
-            {
-                _logTextBox.AppendText(clean + "\n");
-                _logTextBox.ScrollToEnd();
-            });
+            _dispatcher.Invoke(() => _logAction(clean + "\n"));
         }
 
         public void LogError(string message)
